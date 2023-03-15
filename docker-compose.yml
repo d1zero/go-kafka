@@ -27,7 +27,32 @@ services:
     networks:
       - kafka
 
-  kowl:
+  init-kafka:
+    image: confluentinc/cp-kafka:7.3.2
+    depends_on:
+      - kafka
+    networks:
+      - kafka
+    environment:
+      - TOPICS=test
+    entrypoint: [ '/bin/sh', '-c' ]
+    command: |
+      "
+      # blocks until kafka is reachable
+      kafka-topics --bootstrap-server kafka:29092 --list
+
+      echo -e 'Creating kafka topics'
+      IFS=',' read -a array <<< $$TOPICS
+      for element in "$${array[@]}"
+      do
+      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$$element" --replication-factor 1 --partitions 1
+      done
+
+      echo -e 'Successfully created the following topics:'
+      kafka-topics --bootstrap-server kafka:29092 --list
+      "
+
+  redpanda:
     image: docker.redpanda.com/redpandadata/console:latest
     ports:
       - "8080:8080"
@@ -37,7 +62,6 @@ services:
       - KAFKA_BROKERS=kafka:29092
     depends_on:
       - kafka
-
 
 volumes:
   zookeeper_data:
